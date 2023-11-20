@@ -1,7 +1,10 @@
 <?php
 
+use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ChirpController;
+use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\SupplierController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -27,6 +30,10 @@ Route::get('/dashboard', function () {
 Route::resource('chirps',ChirpController::class)
     ->only(['index','store','edit','update','destroy'])
     ->middleware(['auth','verified']);
+
+Route::resource('products', ProductController::class);
+Route::resource('categories', CategoryController::class);
+Route::resource('suppliers', SupplierController::class);
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
