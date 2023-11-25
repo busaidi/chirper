@@ -2,149 +2,123 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Product;
 use App\Models\Category;
-use App\Models\Supplier;
+use App\Models\Product;
+use App\Models\ProductType;
+use App\Models\ProductPricingRule;
 use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
-    /**
-     * Display a listing of the products.
-     *
-     * @return \Illuminate\View\View
-     */
     public function index()
     {
-       // $products = Product::all(); // Fetch all products from the database
-        $products = Product::with('category')->get(); // Eager load the category relationship
-        return view('products.index', compact('products')); // Passing products data to view
+        $products = Product::with(['type', 'category'])->get();
+        return view('products.index', compact('products'));
     }
 
-    /**
-     * Show the form for creating a new product.
-     *
-     * @return \Illuminate\View\View
-     */
     public function create()
     {
-        // Fetch categories and suppliers from the database
-        $categories = Category::all(); // Retrieve all categories
-        $suppliers = Supplier::all(); // Retrieve all suppliers
-
-        // Pass the data to the "create" view
-        return view('products.create', compact('categories', 'suppliers'));
+        $productTypes = ProductType::all();
+        $categories = Category::all();
+        return view('products.create', compact('productTypes', 'categories'));
     }
 
-    /**
-     * Store a newly created product in the database.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\RedirectResponse
-     */
     public function store(Request $request)
     {
-        // Define custom messages for validation
-        $customMessages = [
-            'name.required' => 'Please enter the product name.',
-            'sku.unique' => 'This SKU is already in use. Please use a different SKU.',
-            // more custom messages
-        ];
-
-        // Validate the request data
-        $validatedData = $request->validate([
+        $request->validate([
             'name' => 'required|string|max:255',
-            'sku' => 'required|string|max:255|unique:products,sku',
-            'price' => 'required|numeric|min:0',
-            'cost' => 'nullable|numeric|min:0',
-            'quantity' => 'required|integer|min:0',
-            'description' => 'nullable|string',
-            'category_id' => 'nullable|exists:categories,id',
-            'supplier_id' => 'nullable|exists:suppliers,id',
-        ], $customMessages);
+            'sku' => 'required|string|max:255',
+            'description' => 'required|string',
+            'product_type_id' => 'required|exists:product_types,id',
+            'category_id' => 'required|exists:categories,id',
+// Validation for pricing rules
+            'base_price' => 'required|numeric|min:0',
+            'color_price' => 'nullable|numeric|min:0',
+            'crimping_price' => 'nullable|numeric|min:0',
+            'min_length' => 'nullable|numeric|min:0',
+            'max_length' => 'nullable|numeric|min:0',
+            'min_qty' => 'nullable|integer|min:0',
+            'max_qty' => 'nullable|integer|min:0',
+            'weight_price' => 'nullable|numeric|min:0',
+            'weight_per_meter_price' => 'nullable|numeric|min:0',
+            'bar_length_price' => 'nullable|numeric|min:0',
+// Validation for product variations
+            'variation_name' => 'nullable|string|max:255',
+            'variation_value' => 'nullable|string|max:255',
+        ]);
 
-        // Create a new product with the validated data
-        $product = new Product($validatedData);
+        $product = Product::create($request->all());
+        // Create product pricing rules if applicable
+        $product->pricingRules()->create([
+            'base_price' => $request->base_price,
+            'color_price' => $request->color_price,
+            'crimping_price' => $request->crimping_price,
+            // Add other fields as necessary
+        ]);
 
-        // Save the product to the database
-        $product->save();
+// Handle additional logic for pricing rules and variations if applicable
+// ...
 
-        // Redirect to the index page with a success message
-        return redirect('/products')->with('success', 'Product created successfully');
+        return redirect()->route('products.index')
+            ->with('success', 'Product created successfully.');
     }
 
-    /**
-     * Show the form for editing the specified product.
-     *
-     * @param  Product  $product
-     * @return \Illuminate\View\View
-     */
+    public function show(Product $product)
+    {
+        return view('products.show', compact('product'));
+    }
+
     public function edit(Product $product)
     {
-        // Retrieve the categories from your database
+        $productTypes = ProductType::all();
         $categories = Category::all();
-
-        // Retrieve the suppliers from your database
-        $suppliers = Supplier::all();
-
-        return view('products.edit', compact('product', 'categories', 'suppliers'));
+        return view('products.edit', compact('product', 'productTypes', 'categories'));
     }
 
-    /**
-     * Update the specified product in the database.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  Product  $product
-     * @return \Illuminate\Http\RedirectResponse
-     */
     public function update(Request $request, Product $product)
     {
-        // Define custom messages for validation
-        $customMessages = [
-            'name.required' => 'Please enter the product name.',
-            'sku.unique' => 'This SKU is already in use. Please use a different SKU.',
-            // Add more custom messages as needed
-        ];
-
-        // Validate the request data
-        $validatedData = $request->validate([
+        $request->validate([
             'name' => 'required|string|max:255',
-            'sku' => 'required|string|max:255|unique:products,sku,' . $product->id,
-            'price' => 'required|numeric|min:0',
-            'cost' => 'nullable|numeric|min:0',
-            'quantity' => 'required|integer|min:0',
-            'description' => 'nullable|string',
-            'category_id' => 'nullable|exists:categories,id',
-            'supplier_id' => 'nullable|exists:suppliers,id',
-        ], $customMessages);
+            'sku' => 'required|string|max:255',
+            'description' => 'required|string',
+            'product_type_id' => 'required|exists:product_types,id',
+            'category_id' => 'required|exists:categories,id',
+// Repeat the validation rules for pricing and variations here
+            'base_price' => 'required|numeric|min:0',
+            'color_price' => 'nullable|numeric|min:0',
+            'crimping_price' => 'nullable|numeric|min:0',
+            'min_length' => 'nullable|numeric|min:0',
+            'max_length' => 'nullable|numeric|min:0',
+            'min_qty' => 'nullable|integer|min:0',
+            'max_qty' => 'nullable|integer|min:0',
+            'weight_price' => 'nullable|numeric|min:0',
+            'weight_per_meter_price' => 'nullable|numeric|min:0',
+            'bar_length_price' => 'nullable|numeric|min:0',
+// Validation for product variations
+            'variation_name' => 'nullable|string|max:255',
+            'variation_value' => 'nullable|string|max:255',
+        ]);
 
-        // Update the product with the validated data
-        $product->update($validatedData);
+        $product->update($request->all());
 
-        // Redirect with a success message
-        return redirect()->route('products.index')->with('success', 'Product updated successfully.');
+// Handle additional logic for updating pricing rules and variations if applicable
+// ...
+        // Update product pricing rules if applicable
+        $product->pricingRules()->update([
+            'base_price' => $request->base_price,
+            'color_price' => $request->color_price,
+            'crimping_price' => $request->crimping_price,
+            // Add other fields as necessary
+        ]);
+
+        return redirect()->route('products.index')
+            ->with('success', 'Product updated successfully');
     }
 
-    /**
-     * Remove the specified product from the database.
-     *
-     * @param  Product  $product
-     * @return \Illuminate\Http\RedirectResponse
-     */
     public function destroy(Product $product)
     {
-        $product->delete(); // Delete the product
-        return redirect()->route('products.index')->with('success', 'Product deleted successfully.'); // Redirect with a success message
-    }
-
-
-
-    public function show($id)
-    {
-        // Fetch the product from the database by its ID
-        $product = Product::findOrFail($id);
-
-        // Return the "show" view with the product data
-        return view('products.show', compact('product'));
+        $product->delete();
+        return redirect()->route('products.index')
+            ->with('success', 'Product deleted successfully');
     }
 }
